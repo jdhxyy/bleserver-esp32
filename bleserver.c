@@ -51,6 +51,7 @@ static TZBufferDynamic* rxBuffer;
 // ble连接参数
 static uint16_t connID = 0xffff;
 static esp_gatt_if_t gattsIF = 0xff;
+static int mtuLen = 20;
 
 static bool initRawAdvData(char* deviceName);
 static int task(void);
@@ -396,6 +397,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         case ESP_GATTS_MTU_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_MTU_EVT, MTU %d", param->mtu.mtu);
+            mtuLen = param->mtu.mtu;
             break;
         case ESP_GATTS_CONF_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONF_EVT, status = %d, attr_handle %d", param->conf.status, param->conf.handle);
@@ -424,6 +426,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
             esp_ble_gap_start_advertising(&adv_params);
             isConnect = false;
+            mtuLen = 20;
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
             if (param->add_attr_tab.status != ESP_GATT_OK){
@@ -694,15 +697,27 @@ bool BleTx(uint8_t* bytes, int size) {
         LW(TAG, "ble tx failed!ble is not connect");
         return false;
     }
-    if (size > BLE_SERVER_RX_LEN_MAX) {
-        LW(TAG, "ble tx is too long:%d", size);
-        return false;
-    }
 
-    LD(TAG, "tx frame.len:%d", size);
+    LD(TAG, "tx frame.len:%d mtu:%d", size, mtuLen);
     LaganPrintHex(TAG, LAGAN_LEVEL_DEBUG, bytes, size);
 
-    esp_ble_gatts_send_indicate(gattsIF, connID, handleTable[IDX_CHAR_VAL_TX], 
-        size, bytes, false);
+    int offset = 0;
+    int txLen = 0;
+    for (;;) {
+        if (size <= mtuLen) {
+            txLen = size;
+            size = 0;
+        } else {
+            txLen = mtuLen;
+            size -= mtuLen;
+        }
+
+        esp_ble_gatts_send_indicate(gattsIF, connID, handleTable[IDX_CHAR_VAL_TX], 
+                txLen, bytes + offset, false);
+        offset += txLen;
+        if (size == 0) {
+            break;
+        }
+    }
     return true;
 }
