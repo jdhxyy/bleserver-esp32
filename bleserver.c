@@ -29,6 +29,8 @@
 // tzmalloc字节数
 #define MALLOC_TOTAL 4096
 
+#define MTU_LEN_DEFAULT 23
+
 #pragma pack(1)
 
 // 观察者回调函数
@@ -51,7 +53,7 @@ static TZBufferDynamic* rxBuffer;
 // ble连接参数
 static uint16_t connID = 0xffff;
 static esp_gatt_if_t gattsIF = 0xff;
-static int mtuLen = 20;
+static int mtuLen = MTU_LEN_DEFAULT;
 
 static bool initRawAdvData(char* deviceName);
 static int task(void);
@@ -426,7 +428,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
             esp_ble_gap_start_advertising(&adv_params);
             isConnect = false;
-            mtuLen = 20;
+            mtuLen = MTU_LEN_DEFAULT;
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
             if (param->add_attr_tab.status != ESP_GATT_OK){
@@ -698,18 +700,20 @@ bool BleTx(uint8_t* bytes, int size) {
         return false;
     }
 
-    LD(TAG, "tx frame.len:%d mtu:%d", size, mtuLen);
+    // 最大帧长为mtu - 3
+    int maxLen = mtuLen - 3;
+    LD(TAG, "tx frame.len:%d mtu-3:%d", size, maxLen);
     LaganPrintHex(TAG, LAGAN_LEVEL_DEBUG, bytes, size);
 
     int offset = 0;
     int txLen = 0;
     for (;;) {
-        if (size <= mtuLen) {
+        if (size <= maxLen) {
             txLen = size;
             size = 0;
         } else {
-            txLen = mtuLen;
-            size -= mtuLen;
+            txLen = maxLen;
+            size -= maxLen;
         }
 
         esp_ble_gatts_send_indicate(gattsIF, connID, handleTable[IDX_CHAR_VAL_TX], 
