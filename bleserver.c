@@ -46,6 +46,7 @@ static int mid = -1;
 static intptr_t list = 0;
 
 static bool isConnect = false;
+static bool isNotifyEnable = false;
 
 // 接收缓存
 static TZBufferDynamic* rxBuffer;
@@ -338,7 +339,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                     uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
                     if (descr_value == 0x0001){
                         ESP_LOGI(GATTS_TABLE_TAG, "notify enable");
-                        isConnect = true;
+                        isNotifyEnable = true;
                     }else if (descr_value == 0x0002){
                         ESP_LOGI(GATTS_TABLE_TAG, "indicate enable");
                         uint8_t indicate_data[15];
@@ -352,7 +353,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                     }
                     else if (descr_value == 0x0000){
                         ESP_LOGI(GATTS_TABLE_TAG, "notify/indicate disable ");
-                        isConnect = false;
+                        isNotifyEnable = false;
                     }else{
                         ESP_LOGE(GATTS_TABLE_TAG, "unknown descr value");
                         esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
@@ -415,11 +416,13 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             // 保存参数
             connID = param->connect.conn_id;
             gattsIF = gatts_if;
+            isConnect = true;
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
             esp_ble_gap_start_advertising(&adv_params);
             isConnect = false;
+            isNotifyEnable = false;
             mtuLen = MTU_LEN_DEFAULT;
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
@@ -685,9 +688,14 @@ static TZListNode* createNode(void) {
     return node;
 }
 
-// BleTx 发送数据
-bool BleTx(uint8_t* bytes, int size) {
-    if (isConnect == false) {
+// BleServerIsAllowTx 是否允许发送
+bool BleServerIsAllowTx(void) {
+    return isNotifyEnable;
+}
+
+// BleServerTx 发送数据
+bool BleServerTx(uint8_t* bytes, int size) {
+    if (isNotifyEnable == false) {
         LW(TAG, "ble tx failed!ble is not connect");
         return false;
     }
@@ -716,4 +724,14 @@ bool BleTx(uint8_t* bytes, int size) {
         }
     }
     return true;
+}
+
+// BleServerDisconnect 断开连接
+void BleServerDisconnect(void) {
+    if (isConnect == false) {
+        return;
+    }
+    esp_ble_gatts_close(gattsIF, connID);
+    isConnect = false;
+    isNotifyEnable = false;
 }

@@ -42,7 +42,13 @@ bool BleServerIsConnect(void);
 // callback是回调函数,接收到数据会回调此函数
 bool BleServerRegisterObserver(TZDataFunc callback);
 
-// BleTx 发送数据
-bool BleTx(uint8_t* bytes, int size);
+// BleServerIsAllowTx 是否允许发送
+bool BleServerIsAllowTx(void);
+
+// BleServerTx 发送数据
+bool BleServerTx(uint8_t* bytes, int size);
+
+// BleServerDisconnect 断开连接
+void BleServerDisconnect(void);
 
 #endif
