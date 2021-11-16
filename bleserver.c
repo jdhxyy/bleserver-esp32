@@ -31,6 +31,12 @@
 
 #define MTU_LEN_DEFAULT 23
 
+// 连接间隔.单位:1.25ms
+// 最小间隔7.5ms.即为6
+// ios是30ms.即24
+#define INTERVAL_MIN 6
+#define INTERVAL_MAX 6
+
 #pragma pack(1)
 
 // 观察者回调函数
@@ -333,7 +339,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if (!param->write.is_prep){
                 // the data length of gattc write  must be less than GATTS_DEMO_CHAR_VAL_LEN_MAX.
                 ESP_LOGI(GATTS_TABLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
-                esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+                // esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
 
                 if (handleTable[IDX_CHAR_CFG_TX] == param->write.handle && param->write.len == 2){
                     uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
@@ -407,8 +413,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
             /* For the iOS system, please refer to Apple official documents about the BLE connection parameters restrictions. */
             conn_params.latency = 0;
-            conn_params.max_int = 0x20;    // max_int = 0x20*1.25ms = 40ms
-            conn_params.min_int = 0x10;    // min_int = 0x10*1.25ms = 20ms
+            conn_params.max_int = INTERVAL_MAX;    // max_int = 0x20*1.25ms = 40ms
+            conn_params.min_int = INTERVAL_MIN;    // min_int = 0x10*1.25ms = 20ms
             conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
