@@ -62,6 +62,9 @@ static uint16_t connID = 0xffff;
 static esp_gatt_if_t gattsIF = 0xff;
 static int mtuLen = MTU_LEN_DEFAULT;
 
+// ble MAC地址
+static uint8_t bleMac[6] = {0};
+
 static bool initRawAdvData(char* deviceName);
 static int task(void);
 static void notifyObserver(void);
@@ -574,6 +577,8 @@ bool BleServerLoad(char* deviceName) {
 }
 
 static bool initRawAdvData(char* deviceName) {
+    esp_read_mac(bleMac, ESP_MAC_BT);
+
     rawAdvData.len = 0;
     memset(rawAdvData.buf, 0, TZ_BUFFER_TINY_LEN);
 
@@ -590,6 +595,11 @@ static bool initRawAdvData(char* deviceName) {
     rawAdvData.buf[rawAdvData.len++] = 0x03;
     rawAdvData.buf[rawAdvData.len++] = (uint8_t)BLE_SERVER_SERVICE_UUID;
     rawAdvData.buf[rawAdvData.len++] = (uint8_t)(BLE_SERVER_SERVICE_UUID >> 8);
+    // 厂家数据,ble MAC地址
+    rawAdvData.buf[rawAdvData.len++] = 0x07;
+    rawAdvData.buf[rawAdvData.len++] = 0xFF;
+    memcpy(rawAdvData.buf + rawAdvData.len, bleMac, 6);
+    rawAdvData.len += 6;
     // device name
     int len = strlen(deviceName);
     if (len + rawAdvData.len + 2 > TZ_BUFFER_TINY_LEN) {
@@ -740,4 +750,9 @@ void BleServerDisconnect(void) {
     esp_ble_gatts_close(gattsIF, connID);
     isConnect = false;
     isNotifyEnable = false;
+}
+
+// BleServerGetMac 读取MAC地址
+void BleServerGetMac(uint8_t* mac) {
+    memcpy(mac, bleMac, 6);
 }
