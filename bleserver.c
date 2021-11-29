@@ -586,17 +586,15 @@ static bool initRawAdvData(char* deviceName) {
     rawAdvData.buf[rawAdvData.len++] = 0x02;
     rawAdvData.buf[rawAdvData.len++] = 0x01;
     rawAdvData.buf[rawAdvData.len++] = 0x06;
-    // tx power
-    rawAdvData.buf[rawAdvData.len++] = 0x02;
-    rawAdvData.buf[rawAdvData.len++] = 0x0a;
-    rawAdvData.buf[rawAdvData.len++] = 0xeb;
     // service uuid
     rawAdvData.buf[rawAdvData.len++] = 0x03;
     rawAdvData.buf[rawAdvData.len++] = 0x03;
     rawAdvData.buf[rawAdvData.len++] = (uint8_t)BLE_SERVER_SERVICE_UUID;
     rawAdvData.buf[rawAdvData.len++] = (uint8_t)(BLE_SERVER_SERVICE_UUID >> 8);
     // 厂家数据,ble MAC地址
-    rawAdvData.buf[rawAdvData.len++] = 0x07;
+    rawAdvData.buf[rawAdvData.len++] = 0x09;
+    rawAdvData.buf[rawAdvData.len++] = 0xFF;
+    rawAdvData.buf[rawAdvData.len++] = 0xFF;
     rawAdvData.buf[rawAdvData.len++] = 0xFF;
     memcpy(rawAdvData.buf + rawAdvData.len, bleMac, 6);
     rawAdvData.len += 6;
@@ -612,8 +610,8 @@ static bool initRawAdvData(char* deviceName) {
     rawAdvData.len += len;
 
     // 应答数据
-    memcpy(rawScanRspData.buf, rawAdvData.buf, 10);
-    rawScanRspData.len = 10;
+    memcpy(rawScanRspData.buf, rawAdvData.buf, rawAdvData.len);
+    rawScanRspData.len = rawAdvData.len;
     return true;
 }
 
