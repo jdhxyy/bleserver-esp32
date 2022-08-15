@@ -35,6 +35,10 @@ enum {
 // 载入之前需初始化nvs_flash_init
 bool BleServerLoad(char* deviceName);
 
+// BleServerLoadBySN 模块载入.deviceName是蓝牙设备名称.sn最大10个字节
+// 载入之前需初始化nvs_flash_init
+bool BleServerLoadBySN(char* deviceName, char* sn);
+
 // BleServerIsConnect 是否已连接
 bool BleServerIsConnect(void);
 
