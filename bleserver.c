@@ -66,7 +66,7 @@ static int mtuLen = MTU_LEN_DEFAULT;
 static uint8_t bleMac[6] = {0};
 
 // 可以存储ble mac或者是sn号的后6位
-static TZBuffeTiny gBuffer = {0};
+static TZBufferTiny gBuffer = {0};
 
 static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen);
 static int task(void);
@@ -104,8 +104,8 @@ typedef struct {
 static prepare_type_env_t prepare_write_env;
 
 // 广播数据
-static TZBuffeTiny rawAdvData = {0};
-static TZBuffeTiny rawScanRspData = {0};
+static TZBufferTiny rawAdvData = {0};
+static TZBufferTiny rawScanRspData = {0};
 
 static esp_ble_adv_params_t adv_params = {
     .adv_int_min         = 0x20,
