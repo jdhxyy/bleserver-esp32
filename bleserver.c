@@ -68,6 +68,8 @@ static uint8_t bleMac[6] = {0};
 // 可以存储ble mac或者是sn号的后6位
 static TZBufferTiny gBuffer = {0};
 
+static char gDeviceName[32] = {0};
+
 static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen);
 static int task(void);
 static void notifyObserver(void);
@@ -512,11 +514,16 @@ bool BleServerLoad(char* deviceName) {
         return false;
     }
 
+    esp_read_mac(bleMac, ESP_MAC_BT);
     if (gBuffer.len == 0) {
-        esp_read_mac(bleMac, ESP_MAC_BT);
         gBuffer.len = 6;
         memcpy(gBuffer.buf, bleMac, gBuffer.len);
     }
+
+    if (strlen(gDeviceName) == 0) {
+        strcpy(gDeviceName, deviceName);
+    }
+
     if (initRawAdvData(deviceName, gBuffer.buf, gBuffer.len) == false) {
         LE(TAG, "load failed!init raw adv data failed");
         return false;
@@ -629,12 +636,11 @@ bool BleServerLoadBySN(char* deviceName, char* sn) {
         LE(TAG, "sn len is too long:%d", snLen);
         return false;
     }
-    char newDeviceName[32] = {0};
-    strcpy(newDeviceName, deviceName);
-    strcat(newDeviceName, sn + (snLen - 4));
+    strcpy(gDeviceName, deviceName);
+    strcat(gDeviceName, sn + (snLen - 4));
     gBuffer.len = snLen - 4;
     memcpy(gBuffer.buf, (uint8_t *)sn, gBuffer.len);
-    if (BleServerLoad(newDeviceName) == false) {
+    if (BleServerLoad(gDeviceName) == false) {
         return false;
     }
 
@@ -779,4 +785,9 @@ void BleServerDisconnect(void) {
 // BleServerGetMac 读取MAC地址
 void BleServerGetMac(uint8_t* mac) {
     memcpy(mac, bleMac, 6);
+}
+
+// BleServerGetBleName 读取BLE名称
+char *BleServerGetBleName(void) {
+    return gDeviceName;
 }
