@@ -630,16 +630,19 @@ static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen) {
 
 // BleServerLoadBySN 模块载入.deviceName是蓝牙设备名称.sn最大10个字节
 // 载入之前需初始化nvs_flash_init
-bool BleServerLoadBySN(char* deviceName, char* sn) {
+bool BleServerLoadBySN(char *deviceName, char *sn) {
     int snLen = strlen(sn);
-    if (snLen < 4 || snLen > 10) {
-        LE(TAG, "sn len is too long:%d", snLen);
-        return false;
-    }
+
     strcpy(gDeviceName, deviceName);
-    strcat(gDeviceName, sn + (snLen - 4));
-    gBuffer.len = snLen - 4;
-    memcpy(gBuffer.buf, (uint8_t *)sn, gBuffer.len);
+    
+    if (snLen != 10) {
+        LE(TAG, "sn len is failed:%d", snLen);
+    } else {
+        strcat(gDeviceName, sn + (snLen - 4));
+        gBuffer.len = snLen - 4;
+        memcpy(gBuffer.buf, (uint8_t *)sn, gBuffer.len);
+    }
+    
     if (BleServerLoad(gDeviceName) == false) {
         return false;
     }
@@ -662,6 +665,10 @@ static int task(void) {
 static void notifyObserver(void) {
     TZListNode* node = TZListGetHeader(list);
     tItem* item = NULL;
+
+    LI(TAG, "rx frame.len:%d", rxBuffer->len);
+    LaganPrintHex(TAG, LAGAN_LEVEL_INFO, rxBuffer->buf, rxBuffer->len);
+
     for (;;) {
         if (node == NULL) {
             break;
