@@ -65,12 +65,16 @@ static int mtuLen = MTU_LEN_DEFAULT;
 // ble MAC地址
 static uint8_t bleMac[6] = {0};
 
-// 可以存储ble mac或者是sn号的后6位
-static TZBufferTiny gBuffer = {0};
-
 static char gDeviceName[32] = {0};
 
-static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen);
+// 12字节的SN
+static char extSN[13] ={0};
+
+// ble模式, 0:名称模式, 1:MAC模式, 2:SN模式
+static uint8_t gBleMode = 0;
+
+static bool initRawAdvData(char *deviceName, uint8_t *payload, int payloadLen);
+static bool initRawScanRspData(uint8_t mode);
 static int task(void);
 static void notifyObserver(void);
 static bool isObserverExist(TZDataFunc callback);
@@ -515,17 +519,18 @@ bool BleServerLoad(char* deviceName) {
     }
 
     esp_read_mac(bleMac, ESP_MAC_BT);
-    if (gBuffer.len == 0) {
-        gBuffer.len = 6;
-        memcpy(gBuffer.buf, bleMac, gBuffer.len);
-    }
 
     if (strlen(gDeviceName) == 0) {
         strcpy(gDeviceName, deviceName);
     }
 
-    if (initRawAdvData(deviceName, gBuffer.buf, gBuffer.len) == false) {
+    if (initRawAdvData(deviceName, bleMac, sizeof(bleMac)) == false) {
         LE(TAG, "load failed!init raw adv data failed");
+        return false;
+    }
+
+    if (initRawScanRspData(gBleMode) == false) {
+        LE(TAG, "load failed!init raw scan rsp data failed");
         return false;
     }
 
@@ -622,27 +627,84 @@ static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen) {
     memcpy(rawAdvData.buf + rawAdvData.len, deviceName, len);
     rawAdvData.len += len;
 
-    // 应答数据
-    memcpy(rawScanRspData.buf, rawAdvData.buf, rawAdvData.len);
-    rawScanRspData.len = rawAdvData.len;
+    return true;
+}
+
+static bool initRawScanRspData(uint8_t mode) {
+    int extSNLen = strlen(extSN);
+    int len = 4;
+
+    if (mode != 0) {
+        len++;
+    }
+
+    if (extSNLen == 12) {
+        len += 12;
+    }
+
+    rawScanRspData.len = 0;
+    memset(rawScanRspData.buf, 0, TZ_BUFFER_TINY_LEN);
+
+    // 厂家数据,ble MAC地址
+    rawScanRspData.buf[rawScanRspData.len++] = len;
+    rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
+    rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
+    rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
+    rawScanRspData.buf[rawScanRspData.len++] = '>';
+    if (mode == 1) {
+        rawScanRspData.buf[rawScanRspData.len++] = 'M';
+    } else if (mode == 2) {
+        rawScanRspData.buf[rawScanRspData.len++] = 'S';
+    }
+
+    if (extSNLen == 12) {
+        memcpy(rawScanRspData.buf + rawScanRspData.len, extSN, extSNLen);
+        rawScanRspData.len += extSNLen;
+    }
+
+    if (rawScanRspData.len > TZ_BUFFER_TINY_LEN) {
+        LE(TAG, "init raw scan rsp data failed!device name is too long:%d", rawScanRspData.len);
+        return false;
+    }
+
     return true;
 }
 
 // BleServerLoadBySN 模块载入.deviceName是蓝牙设备名称.sn最大10个字节
 // 载入之前需初始化nvs_flash_init
 bool BleServerLoadBySN(char *deviceName, char *sn) {
-    int snLen = strlen(sn);
+    int len = strlen(sn);
 
     strcpy(gDeviceName, deviceName);
-    
-    if (snLen != 10) {
-        LE(TAG, "sn len is failed:%d", snLen);
+
+    if (len != 12) {
+        LE(TAG, "sn len is failed:%d", len);
     } else {
-        strcat(gDeviceName, sn + (snLen - 4));
-        gBuffer.len = snLen - 4;
-        memcpy(gBuffer.buf, (uint8_t *)sn, gBuffer.len);
+        strcat(gDeviceName, sn + (len - 4));
+        strcpy(extSN, sn);
+        gBleMode = 2;
     }
-    
+
+    if (BleServerLoad(gDeviceName) == false) {
+        return false;
+    }
+
+    return true;
+}
+
+// BleServerLoadByMac 模块载入.deviceName是蓝牙设备名称
+// 载入之前需初始化nvs_flash_init
+bool BleServerLoadByMac(char *deviceName) {
+    strcpy(gDeviceName, deviceName);
+    char mac[7] = {0};
+
+    esp_read_mac(bleMac, ESP_MAC_BT);
+    sprintf(mac, "%02X%02X", bleMac[4], bleMac[5]);
+
+    strcat(gDeviceName, mac);
+
+    gBleMode = 1;
+
     if (BleServerLoad(gDeviceName) == false) {
         return false;
     }
