@@ -79,6 +79,7 @@ static int task(void);
 static void notifyObserver(void);
 static bool isObserverExist(TZDataFunc callback);
 static TZListNode* createNode(void);
+static int rssiRead(void);
 
 // 驱动模块参数
 #define GATTS_TABLE_TAG "GATTS_TABLE_DEMO"
@@ -164,6 +165,10 @@ static const uint8_t char_prop_read_notify = ESP_GATT_CHAR_PROP_BIT_READ|ESP_GAT
 static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x11, 0x22, 0x33, 0x44};
 
+static int8_t gBleRssi = 0;
+
+static esp_bd_addr_t gRemoteBda = {0};
+
 /* Full Database Description - Used to add attributes into the database */
 static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
 {
@@ -237,6 +242,9 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                   param->update_conn_params.conn_int,
                   param->update_conn_params.latency,
                   param->update_conn_params.timeout);
+            break;
+        case ESP_GAP_BLE_READ_RSSI_COMPLETE_EVT:
+            gBleRssi = param->read_rssi_cmpl.rssi;
             break;
         default:
             break;
@@ -423,6 +431,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             esp_log_buffer_hex(GATTS_TABLE_TAG, param->connect.remote_bda, 6);
             esp_ble_conn_update_params_t conn_params = {0};
             memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
+            memcpy(gRemoteBda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
             /* For the iOS system, please refer to Apple official documents about the BLE connection parameters restrictions. */
             conn_params.latency = 0;
             conn_params.max_int = INTERVAL_MAX;    // max_int = 0x20*1.25ms = 40ms
@@ -592,6 +601,10 @@ bool BleServerLoad(char* deviceName) {
         LE(TAG, "load failed!async start task failed");
     }
 
+    if (AsyncStart(rssiRead, ASYNC_SECOND) == false) {
+        LE(TAG, "load failed!async start task failed");
+    }
+
     LI(TAG, "load success.device name:%s", deviceName);
     return true;
 }
@@ -720,6 +733,18 @@ static int task(void) {
     PT_WAIT_UNTIL(&pt, rxBuffer->len > 0);
 
     notifyObserver();
+
+    PT_END(&pt);
+}
+
+static int rssiRead(void) {
+    static struct pt pt = {0};
+
+    PT_BEGIN(&pt);
+
+    PT_WAIT_UNTIL(&pt, isConnect == true);
+
+    esp_ble_gap_read_rssi(gRemoteBda);
 
     PT_END(&pt);
 }
@@ -859,4 +884,9 @@ void BleServerGetMac(uint8_t* mac) {
 // BleServerGetBleName 读取BLE名称
 char *BleServerGetBleName(void) {
     return gDeviceName;
+}
+
+// BleServerGetRssi 获取蓝牙Rssi值
+int8_t BleServerGetRssi(void) {
+    return gBleRssi;
 }
