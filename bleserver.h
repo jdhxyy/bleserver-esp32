@@ -65,4 +65,7 @@ void BleServerGetMac(uint8_t* mac);
 // BleServerGetBleName 读取BLE名称
 char *BleServerGetBleName(void);
 
+// BleServerGetRssi 获取蓝牙Rssi值
+int8_t BleServerGetRssi(void);
+
 #endif
