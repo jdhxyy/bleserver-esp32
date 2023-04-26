@@ -60,7 +60,7 @@ bool BleServerTx(uint8_t* bytes, int size);
 void BleServerDisconnect(void);
 
 // BleServerGetMac 读取MAC地址
-void BleServerGetMac(uint8_t* mac);
+void BleServerGetMac(uint8_t mac[6]);
 
 // BleServerGetBleName 读取BLE名称
 char *BleServerGetBleName(void);

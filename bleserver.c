@@ -877,8 +877,8 @@ void BleServerDisconnect(void) {
 }
 
 // BleServerGetMac 读取MAC地址
-void BleServerGetMac(uint8_t* mac) {
-    memcpy(mac, bleMac, 6);
+void BleServerGetMac(uint8_t mac[6]) {
+    memcpy(mac, bleMac, sizeof(bleMac));
 }
 
 // BleServerGetBleName 读取BLE名称
