@@ -73,6 +73,9 @@ static char extSN[13] ={0};
 // ble模式, 0:名称模式, 1:MAC模式, 2:SN模式
 static uint8_t gBleMode = 0;
 
+// 默认广播应答帧长度
+static uint8_t gRawScanRspDefaultLen = 0;
+
 static bool initRawAdvData(char *deviceName, uint8_t *payload, int payloadLen);
 static bool initRawScanRspData(uint8_t mode);
 static int task(void);
@@ -483,7 +486,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
-
     /* If event is register event, store the gatts_if for each profile */
     if (event == ESP_GATTS_REG_EVT) {
         if (param->reg.status == ESP_GATT_OK) {
@@ -674,6 +676,8 @@ static bool initRawScanRspData(uint8_t mode) {
         memcpy(rawScanRspData.buf + rawScanRspData.len, extSN, extSNLen);
         rawScanRspData.len += extSNLen;
     }
+
+    gRawScanRspDefaultLen = rawScanRspData.len;
 
     if (rawScanRspData.len > TZ_BUFFER_TINY_LEN) {
         LE(TAG, "init raw scan rsp data failed!device name is too long:%d", rawScanRspData.len);
@@ -889,4 +893,18 @@ char *BleServerGetBleName(void) {
 // BleServerGetRssi 获取蓝牙Rssi值
 int8_t BleServerGetRssi(void) {
     return gBleRssi;
+}
+
+// BleServerSetExtInfo 设置蓝牙扩展信息
+void BleServerSetExtInfo(uint8_t *bytes, int len) {
+    uint8_t totalLen = len + gRawScanRspDefaultLen;
+    if (len + totalLen > ESP_BLE_SCAN_RSP_DATA_LEN_MAX) {
+        LE(TAG, "set ext info failed!len is too long");
+        return;
+    }
+
+    memcpy(rawScanRspData.buf + gRawScanRspDefaultLen, bytes, len);
+    rawScanRspData.len = totalLen;
+    rawScanRspData.buf[0] = totalLen - 1;
+    esp_ble_gap_config_scan_rsp_data_raw(rawScanRspData.buf, rawScanRspData.len);
 }
