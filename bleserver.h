@@ -68,4 +68,7 @@ char *BleServerGetBleName(void);
 // BleServerGetRssi 获取蓝牙Rssi值
 int8_t BleServerGetRssi(void);
 
+// BleServerSetExtInfo 设置蓝牙扩展信息
+void BleServerSetExtInfo(uint8_t *bytes, int len);
+
 #endif
