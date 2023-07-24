@@ -1,5 +1,5 @@
 // Copyright 2021-2021 The jdh99 Authors. All rights reserved.
-// ble·şÎñ¶Ë
+// bleæœåŠ¡ç«¯
 // Authors: jdh99 <jdh821@163.com>
 
 #include "bleserver.h"
@@ -26,20 +26,20 @@
 
 #define TAG "bleserver"
 
-// tzmalloc×Ö½ÚÊı
+// tzmallocå­—èŠ‚æ•°
 #define MALLOC_TOTAL 4096
 
 #define MTU_LEN_DEFAULT 23
 
-// Á¬½Ó¼ä¸ô.µ¥Î»:1.25ms
-// ×îĞ¡¼ä¸ô7.5ms.¼´Îª6
-// iosÊÇ30ms.¼´24
+// è¿æ¥é—´éš”.å•ä½:1.25ms
+// æœ€å°é—´éš”7.5ms.å³ä¸º6
+// iosæ˜¯30ms.å³24
 #define INTERVAL_MIN 6
 #define INTERVAL_MAX 6
 
 #pragma pack(1)
 
-// ¹Û²ìÕß»Øµ÷º¯Êı
+// è§‚å¯Ÿè€…å›è°ƒå‡½æ•°
 typedef struct {
     TZDataFunc callback;
 } tItem;
@@ -48,32 +48,32 @@ typedef struct {
 
 static int mid = -1;
 
-// ´æ´¢¹Û²ìÕßÁĞ±í
+// å­˜å‚¨è§‚å¯Ÿè€…åˆ—è¡¨
 static intptr_t list = 0;
 
 static bool isConnect = false;
 static bool isNotifyEnable = false;
 
-// ½ÓÊÕ»º´æ
+// æ¥æ”¶ç¼“å­˜
 static TZBufferDynamic* rxBuffer;
 
-// bleÁ¬½Ó²ÎÊı
+// bleè¿æ¥å‚æ•°
 static uint16_t connID = 0xffff;
 static esp_gatt_if_t gattsIF = 0xff;
 static int mtuLen = MTU_LEN_DEFAULT;
 
-// ble MACµØÖ·
+// ble MACåœ°å€
 static uint8_t bleMac[6] = {0};
 
 static char gDeviceName[32] = {0};
 
-// 12×Ö½ÚµÄSN
+// 12å­—èŠ‚çš„SN
 static char extSN[13] ={0};
 
-// bleÄ£Ê½, 0:Ãû³ÆÄ£Ê½, 1:MACÄ£Ê½, 2:SNÄ£Ê½
+// bleæ¨¡å¼, 0:åç§°æ¨¡å¼, 1:MACæ¨¡å¼, 2:SNæ¨¡å¼
 static uint8_t gBleMode = 0;
 
-// Ä¬ÈÏ¹ã²¥Ó¦´ğÖ¡³¤¶È
+// é»˜è®¤å¹¿æ’­åº”ç­”å¸§é•¿åº¦
 static uint8_t gRawScanRspDefaultLen = 0;
 
 static bool initRawAdvData(char *deviceName, uint8_t *payload, int payloadLen);
@@ -84,7 +84,7 @@ static bool isObserverExist(TZDataFunc callback);
 static TZListNode* createNode(void);
 static int rssiRead(void);
 
-// Çı¶¯Ä£¿é²ÎÊı
+// é©±åŠ¨æ¨¡å—å‚æ•°
 #define GATTS_TABLE_TAG "GATTS_TABLE_DEMO"
 
 #define PROFILE_NUM                 1
@@ -113,7 +113,7 @@ typedef struct {
 
 static prepare_type_env_t prepare_write_env;
 
-// ¹ã²¥Êı¾İ
+// å¹¿æ’­æ•°æ®
 static TZBufferTiny rawAdvData = {0};
 static TZBufferTiny rawScanRspData = {0};
 
@@ -152,11 +152,11 @@ static struct gatts_profile_inst heart_rate_profile_tab[PROFILE_NUM] = {
     },
 };
 
-// ·şÎñUUID
+// æœåŠ¡UUID
 static const uint16_t GATTS_SERVICE_UUID = BLE_SERVER_SERVICE_UUID;
-// ·¢ËÍ
+// å‘é€
 static const uint16_t GATTS_CHAR_TX_UUID = BLE_SERVER_TX_UUID;
-// ½ÓÊÕ
+// æ¥æ”¶
 static const uint16_t GATTS_CHAR_RX_UUID = BLE_SERVER_RX_UUID;
 
 static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
@@ -304,7 +304,7 @@ void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC && prepare_write_env->prepare_buf){
         esp_log_buffer_hex(GATTS_TABLE_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
 
-        // ±£´æÊı¾İ
+        // ä¿å­˜æ•°æ®
         ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_EXEC_WRITE_EVT rx data\n");
 
         do {
@@ -333,7 +333,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 {
     switch (event) {
         case ESP_GATTS_REG_EVT:{
-            esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name((char*)rawAdvData.buf);
+            esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name((char*)gDeviceName);
             if (set_dev_name_ret){
                 ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
             }
@@ -394,7 +394,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                     esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
                 }
 
-                // ±£´æÊı¾İ
+                // ä¿å­˜æ•°æ®
                 if (handleTable[IDX_CHAR_VAL_RX] == param->write.handle){
                     ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_WRITE_EVT rx data\n");
 
@@ -443,7 +443,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
 
-            // ±£´æ²ÎÊı
+            // ä¿å­˜å‚æ•°
             connID = param->connect.conn_id;
             gattsIF = gatts_if;
             isConnect = true;
@@ -510,8 +510,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     } while (0);
 }
 
-// BleServerLoad Ä£¿éÔØÈë.deviceNameÊÇÀ¶ÑÀÉè±¸Ãû³Æ
-// ÔØÈëÖ®Ç°Ğè³õÊ¼»¯nvs_flash_init
+// BleServerLoad æ¨¡å—è½½å…¥.deviceNameæ˜¯è“ç‰™è®¾å¤‡åç§°
+// è½½å…¥ä¹‹å‰éœ€åˆå§‹åŒ–nvs_flash_init
 bool BleServerLoad(char* deviceName) {
     mid = TZMallocRegister(0, TAG, MALLOC_TOTAL);
     if (mid == -1) {
@@ -624,7 +624,7 @@ static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen) {
     rawAdvData.buf[rawAdvData.len++] = 0x03;
     rawAdvData.buf[rawAdvData.len++] = (uint8_t)BLE_SERVER_SERVICE_UUID;
     rawAdvData.buf[rawAdvData.len++] = (uint8_t)(BLE_SERVER_SERVICE_UUID >> 8);
-    // ³§¼ÒÊı¾İ,ble MACµØÖ·
+    // å‚å®¶æ•°æ®,ble MACåœ°å€
     rawAdvData.buf[rawAdvData.len++] = 3 + payloadLen;
     rawAdvData.buf[rawAdvData.len++] = 0xFF;
     rawAdvData.buf[rawAdvData.len++] = 0xFF;
@@ -660,7 +660,7 @@ static bool initRawScanRspData(uint8_t mode) {
     rawScanRspData.len = 0;
     memset(rawScanRspData.buf, 0, TZ_BUFFER_TINY_LEN);
 
-    // ³§¼ÒÊı¾İ,ble MACµØÖ·
+    // å‚å®¶æ•°æ®,ble MACåœ°å€
     rawScanRspData.buf[rawScanRspData.len++] = len;
     rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
     rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
@@ -687,8 +687,8 @@ static bool initRawScanRspData(uint8_t mode) {
     return true;
 }
 
-// BleServerLoadBySN Ä£¿éÔØÈë.deviceNameÊÇÀ¶ÑÀÉè±¸Ãû³Æ.sn×î´ó10¸ö×Ö½Ú
-// ÔØÈëÖ®Ç°Ğè³õÊ¼»¯nvs_flash_init
+// BleServerLoadBySN æ¨¡å—è½½å…¥.deviceNameæ˜¯è“ç‰™è®¾å¤‡åç§°.snæœ€å¤§10ä¸ªå­—èŠ‚
+// è½½å…¥ä¹‹å‰éœ€åˆå§‹åŒ–nvs_flash_init
 bool BleServerLoadBySN(char *deviceName, char *sn) {
     int len = strlen(sn);
 
@@ -709,8 +709,8 @@ bool BleServerLoadBySN(char *deviceName, char *sn) {
     return true;
 }
 
-// BleServerLoadByMac Ä£¿éÔØÈë.deviceNameÊÇÀ¶ÑÀÉè±¸Ãû³Æ
-// ÔØÈëÖ®Ç°Ğè³õÊ¼»¯nvs_flash_init
+// BleServerLoadByMac æ¨¡å—è½½å…¥.deviceNameæ˜¯è“ç‰™è®¾å¤‡åç§°
+// è½½å…¥ä¹‹å‰éœ€åˆå§‹åŒ–nvs_flash_init
 bool BleServerLoadByMac(char *deviceName) {
     strcpy(gDeviceName, deviceName);
     char mac[7] = {0};
@@ -775,13 +775,13 @@ static void notifyObserver(void) {
     rxBuffer->len = 0;
 }
 
-// BleServerIsConnect ÊÇ·ñÒÑÁ¬½Ó
+// BleServerIsConnect æ˜¯å¦å·²è¿æ¥
 bool BleServerIsConnect(void) {
     return isConnect;
 }
 
-// BleServerRegisterObserver ×¢²á½ÓÊÕ¹Û²ìÕß
-// callbackÊÇ»Øµ÷º¯Êı,½ÓÊÕµ½Êı¾İ»á»Øµ÷´Ëº¯Êı
+// BleServerRegisterObserver æ³¨å†Œæ¥æ”¶è§‚å¯Ÿè€…
+// callbackæ˜¯å›è°ƒå‡½æ•°,æ¥æ”¶åˆ°æ•°æ®ä¼šå›è°ƒæ­¤å‡½æ•°
 bool BleServerRegisterObserver(TZDataFunc callback) {
     if (mid < 0 || callback == NULL) {
         LE(TAG, "register observer failed!mid is wrong or callback is null");
@@ -832,19 +832,19 @@ static TZListNode* createNode(void) {
     return node;
 }
 
-// BleServerIsAllowTx ÊÇ·ñÔÊĞí·¢ËÍ
+// BleServerIsAllowTx æ˜¯å¦å…è®¸å‘é€
 bool BleServerIsAllowTx(void) {
     return isNotifyEnable;
 }
 
-// BleServerTx ·¢ËÍÊı¾İ
+// BleServerTx å‘é€æ•°æ®
 bool BleServerTx(uint8_t* bytes, int size) {
     if (isNotifyEnable == false) {
         LW(TAG, "ble tx failed!ble is not connect");
         return false;
     }
 
-    // ×î´óÖ¡³¤Îªmtu - 3
+    // æœ€å¤§å¸§é•¿ä¸ºmtu - 3
     int maxLen = mtuLen - 3;
     LD(TAG, "tx frame.len:%d mtu-3:%d", size, maxLen);
     LaganPrintHex(TAG, LAGAN_LEVEL_DEBUG, bytes, size);
@@ -870,7 +870,7 @@ bool BleServerTx(uint8_t* bytes, int size) {
     return true;
 }
 
-// BleServerDisconnect ¶Ï¿ªÁ¬½Ó
+// BleServerDisconnect æ–­å¼€è¿æ¥
 void BleServerDisconnect(void) {
     if (isConnect == false) {
         return;
@@ -880,22 +880,22 @@ void BleServerDisconnect(void) {
     isNotifyEnable = false;
 }
 
-// BleServerGetMac ¶ÁÈ¡MACµØÖ·
+// BleServerGetMac è¯»å–MACåœ°å€
 void BleServerGetMac(uint8_t mac[6]) {
     memcpy(mac, bleMac, sizeof(bleMac));
 }
 
-// BleServerGetBleName ¶ÁÈ¡BLEÃû³Æ
+// BleServerGetBleName è¯»å–BLEåç§°
 char *BleServerGetBleName(void) {
     return gDeviceName;
 }
 
-// BleServerGetRssi »ñÈ¡À¶ÑÀRssiÖµ
+// BleServerGetRssi è·å–è“ç‰™Rssiå€¼
 int8_t BleServerGetRssi(void) {
     return gBleRssi;
 }
 
-// BleServerSetExtInfo ÉèÖÃÀ¶ÑÀÀ©Õ¹ĞÅÏ¢
+// BleServerSetExtInfo è®¾ç½®è“ç‰™æ‰©å±•ä¿¡æ¯
 void BleServerSetExtInfo(uint8_t *bytes, int len) {
     uint8_t totalLen = len + gRawScanRspDefaultLen;
     if (len + totalLen > ESP_BLE_SCAN_RSP_DATA_LEN_MAX) {
