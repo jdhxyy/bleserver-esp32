@@ -70,14 +70,19 @@ static char gDeviceName[32] = {0};
 // 12字节的SN
 static char extSN[13] ={0};
 
-// ble模式, 0:名称模式, 1:MAC模式, 2:SN模式
-static uint8_t gBleMode = 0;
+typedef enum {
+    TYPE_NORMAL = 0,
+    TYPE_MAC = 1,
+    TYPE_SN = 2,
+} tBleNameType;
+
+static tBleNameType gBleNameType = {TYPE_NORMAL};
 
 // 默认广播应答帧长度
 static uint8_t gRawScanRspDefaultLen = 0;
 
 static bool initRawAdvData(char *deviceName, uint8_t *payload, int payloadLen);
-static bool initRawScanRspData(uint8_t mode);
+static bool initRawScanRspData(tBleNameType type);
 static int task(void);
 static void notifyObserver(void);
 static bool isObserverExist(TZDataFunc callback);
@@ -343,11 +348,14 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 ESP_LOGE(GATTS_TABLE_TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
             }
             adv_config_done |= ADV_CONFIG_FLAG;
-            esp_err_t raw_scan_ret = esp_ble_gap_config_scan_rsp_data_raw(rawScanRspData.buf, rawScanRspData.len);
-            if (raw_scan_ret){
-                ESP_LOGE(GATTS_TABLE_TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
+
+            if (gBleNameType != TYPE_NORMAL) {
+                esp_err_t raw_scan_ret = esp_ble_gap_config_scan_rsp_data_raw(rawScanRspData.buf, rawScanRspData.len);
+                if (raw_scan_ret) {
+                    ESP_LOGE(GATTS_TABLE_TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
+                }
+                adv_config_done |= SCAN_RSP_CONFIG_FLAG;
             }
-            adv_config_done |= SCAN_RSP_CONFIG_FLAG;
 
             esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, HRS_IDX_NB, SVC_INST_ID);
             if (create_attr_ret){
@@ -540,7 +548,7 @@ bool BleServerLoad(char* deviceName) {
         return false;
     }
 
-    if (initRawScanRspData(gBleMode) == false) {
+    if (initRawScanRspData(gBleNameType) == false) {
         LE(TAG, "load failed!init raw scan rsp data failed");
         return false;
     }
@@ -645,16 +653,18 @@ static bool initRawAdvData(char* deviceName, uint8_t* payload, int payloadLen) {
     return true;
 }
 
-static bool initRawScanRspData(uint8_t mode) {
+static bool initRawScanRspData(tBleNameType type) {
+    if (type == TYPE_NORMAL){
+        return true;
+    }
+
     int extSNLen = strlen(extSN);
     int len = 4;
 
-    if (mode != 0) {
-        len++;
-    }
-
-    if (extSNLen == 12) {
-        len += 12;
+    if (type == TYPE_MAC) {
+        len += sizeof(bleMac) + 1;
+    } else if (type == TYPE_SN) {
+        len += extSNLen + 1;
     }
 
     rawScanRspData.len = 0;
@@ -666,13 +676,13 @@ static bool initRawScanRspData(uint8_t mode) {
     rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
     rawScanRspData.buf[rawScanRspData.len++] = 0xFF;
     rawScanRspData.buf[rawScanRspData.len++] = '>';
-    if (mode == 1) {
-        rawScanRspData.buf[rawScanRspData.len++] = 'M';
-    } else if (mode == 2) {
-        rawScanRspData.buf[rawScanRspData.len++] = 'S';
-    }
 
-    if (extSNLen == 12) {
+    if (type == TYPE_MAC) {
+        rawScanRspData.buf[rawScanRspData.len++] = 'M';
+        memcpy(rawScanRspData.buf + rawScanRspData.len, bleMac, sizeof(bleMac));
+        rawScanRspData.len += sizeof(bleMac);
+    } else if (type == TYPE_SN) {
+        rawScanRspData.buf[rawScanRspData.len++] = 'S';
         memcpy(rawScanRspData.buf + rawScanRspData.len, extSN, extSNLen);
         rawScanRspData.len += extSNLen;
     }
@@ -699,7 +709,7 @@ bool BleServerLoadBySN(char *deviceName, char *sn) {
     } else {
         strcat(gDeviceName, sn + (len - 4));
         strcpy(extSN, sn);
-        gBleMode = 2;
+        gBleNameType = TYPE_SN;
     }
 
     if (BleServerLoad(gDeviceName) == false) {
@@ -720,7 +730,7 @@ bool BleServerLoadByMac(char *deviceName) {
 
     strcat(gDeviceName, mac);
 
-    gBleMode = 1;
+    gBleNameType = TYPE_MAC;
 
     if (BleServerLoad(gDeviceName) == false) {
         return false;
