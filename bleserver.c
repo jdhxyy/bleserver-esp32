@@ -890,6 +890,16 @@ void BleServerDisconnect(void) {
     isNotifyEnable = false;
 }
 
+// BleServerStopGap 停止广播
+void BleServerStopGap(void) {
+    esp_ble_gap_stop_advertising();
+}
+
+// BleServerStartGap 启动广播
+void BleServerStartGap(void) {
+    esp_ble_gap_start_advertising(&adv_params);
+}
+
 // BleServerGetMac 读取MAC地址
 void BleServerGetMac(uint8_t mac[6]) {
     memcpy(mac, bleMac, sizeof(bleMac));
