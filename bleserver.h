@@ -59,6 +59,12 @@ bool BleServerTx(uint8_t* bytes, int size);
 // BleServerDisconnect 断开连接
 void BleServerDisconnect(void);
 
+// BleServerStopGap 停止广播
+void BleServerStopGap(void);
+
+// BleServerStartGap 启动广播
+void BleServerStartGap(void);
+
 // BleServerGetMac 读取MAC地址
 void BleServerGetMac(uint8_t mac[6]);
 
