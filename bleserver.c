@@ -17,6 +17,7 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_bt.h"
+#include "esp_mac.h"
 
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -307,7 +308,7 @@ void example_prepare_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t 
 
 void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param){
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC && prepare_write_env->prepare_buf){
-        esp_log_buffer_hex(GATTS_TABLE_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
+        ESP_LOG_BUFFER_HEX(GATTS_TABLE_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
 
         // 保存数据
         ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_EXEC_WRITE_EVT rx data\n");
@@ -393,7 +394,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                         isNotifyEnable = false;
                     }else{
                         ESP_LOGE(GATTS_TABLE_TAG, "unknown descr value");
-                        esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+                        ESP_LOG_BUFFER_HEX(GATTS_TABLE_TAG, param->write.value, param->write.len);
                     }
 
                 }
@@ -439,7 +440,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         case ESP_GATTS_CONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
-            esp_log_buffer_hex(GATTS_TABLE_TAG, param->connect.remote_bda, 6);
+            ESP_LOG_BUFFER_HEX(GATTS_TABLE_TAG, param->connect.remote_bda, 6);
             esp_ble_conn_update_params_t conn_params = {0};
             memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
             memcpy(gRemoteBda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
@@ -537,7 +538,7 @@ bool BleServerLoad(char* deviceName) {
         return false;
     }
 
-    esp_read_mac(bleMac, ESP_MAC_BT);
+    esp_efuse_mac_get_default(bleMac);
 
     if (strlen(gDeviceName) == 0) {
         strcpy(gDeviceName, deviceName);
@@ -725,7 +726,7 @@ bool BleServerLoadByMac(char *deviceName) {
     strcpy(gDeviceName, deviceName);
     char mac[7] = {0};
 
-    esp_read_mac(bleMac, ESP_MAC_BT);
+    esp_efuse_mac_get_default(bleMac);
     sprintf(mac, "%02X%02X", bleMac[4], bleMac[5]);
 
     strcat(gDeviceName, mac);
