@@ -311,7 +311,7 @@ void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble
         ESP_LOG_BUFFER_HEX(GATTS_TABLE_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
 
         // 保存数据
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_EXEC_WRITE_EVT rx data\n");
+        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_EXEC_WRITE_EVT rx data:%d\n", prepare_write_env->prepare_len);
 
         do {
             if (prepare_write_env->prepare_len <= 0) {
@@ -320,6 +320,10 @@ void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble
             }
             if (rxBuffer->len > 0) {
                 LW(TAG, "deal data is too slow.throw frame!");
+                break;
+            }
+            if (prepare_write_env->prepare_len > BLE_SERVER_RX_LEN_MAX) {
+                LE(TAG, "rx data too long:%d, max:%d", prepare_write_env->prepare_len, BLE_SERVER_RX_LEN_MAX);
                 break;
             }
             memcpy(rxBuffer->buf, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
@@ -405,10 +409,14 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 
                 // 保存数据
                 if (handleTable[IDX_CHAR_VAL_RX] == param->write.handle){
-                    ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_WRITE_EVT rx data\n");
+                    ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_WRITE_EVT rx data:%d\n", param->write.len);
 
                     if (param->write.len <= 0) {
                         LE(TAG, "rx buffer len is wrong:%d", param->write.len);
+                        break;
+                    }
+                    if (param->write.len > BLE_SERVER_RX_LEN_MAX) {
+                        LE(TAG, "rx data too long:%d, max:%d", param->write.len, BLE_SERVER_RX_LEN_MAX);
                         break;
                     }
                     if (rxBuffer->len > 0) {
