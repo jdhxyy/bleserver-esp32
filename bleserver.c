@@ -471,6 +471,12 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             isConnect = false;
             isNotifyEnable = false;
             mtuLen = MTU_LEN_DEFAULT;
+            // 连接结束，清理未提交的 prepare-write 缓冲，防止内存泄漏和跨连接脏数据
+            if (prepare_write_env.prepare_buf != NULL) {
+                free(prepare_write_env.prepare_buf);
+                prepare_write_env.prepare_buf = NULL;
+            }
+            prepare_write_env.prepare_len = 0;
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
             if (param->add_attr_tab.status != ESP_GATT_OK){
@@ -777,7 +783,7 @@ static void notifyObserver(void) {
     tItem* item = NULL;
 
     LI(TAG, "rx frame.len:%d", rxBuffer->len);
-    LaganPrintHex(TAG, LAGAN_LEVEL_INFO, rxBuffer->buf, rxBuffer->len);
+    LaganPrintHex(TAG, LAGAN_LEVEL_DEBUG, rxBuffer->buf, rxBuffer->len);
 
     for (;;) {
         if (node == NULL) {
