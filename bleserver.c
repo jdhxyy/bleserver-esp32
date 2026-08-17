@@ -552,7 +552,8 @@ bool BleServerLoad(char* deviceName) {
         return false;
     }
 
-    esp_efuse_mac_get_default(bleMac);
+    // 取真实 BLE MAC（base MAC + 2），填充广播包厂家数据字段
+    esp_read_mac(bleMac, ESP_MAC_BT);
 
     if (strlen(gDeviceName) == 0) {
         strcpy(gDeviceName, deviceName);
@@ -740,7 +741,8 @@ bool BleServerLoadByMac(char *deviceName) {
     strcpy(gDeviceName, deviceName);
     char mac[7] = {0};
 
-    esp_efuse_mac_get_default(bleMac);
+    // 取真实 BLE MAC（base MAC + 2），作为设备名唯一后缀
+    esp_read_mac(bleMac, ESP_MAC_BT);
     sprintf(mac, "%02X%02X", bleMac[4], bleMac[5]);
 
     strcat(gDeviceName, mac);
